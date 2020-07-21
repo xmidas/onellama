@@ -1,0 +1,84 @@
+#!/bin/bash
+
+script_name=$(basename "$BASH_SOURCE")
+script_dir=$(dirname "$BASH_SOURCE")
+onellama_dir=$(cd ${script_dir}/..; pwd)
+makefile_dir=${onellama_dir}/make
+
+if [[ $1 != "init" ]]; then
+    echo >&2 "Usage: $0 init"
+    echo >&2
+    echo >&2 "Should be run at top level of option tree with an environment matching"
+    echo >&2 "the desired X-Midas environment for building."
+    echo >&2
+    echo >&2 "TODO: write better help!"
+    echo >&2
+    exit 1
+fi
+
+optree_dir=$(pwd)
+
+if [[ ! -f ${optree_dir}/MidasMakefile ]]; then
+    # TODO: use manifest.txt instead?
+    echo >&2 "Please run genmake for this option tree first"
+    exit 1
+fi
+
+if ! kill -0 ${XM_PPID:-XM_PPID} 2>/dev/null ; then
+    echo >&2 "$script_name: Could not detect an active X-Midas environment"
+    echo >&2 "Please run xmstart and configure your XM_PATH first."
+    exit 1
+fi
+
+if [[ ! -f ${makefile_dir}/opt.mk ]]; then
+    echo >&2 "$script_name could not find ${makefile_dir}/opt.mk"
+    exit 1
+fi
+
+rm -f ${optree_dir}/makefile;
+ln -s ${makefile_dir}/opt.mk ${optree_dir}/makefile;
+
+rm -f ${optree_dir}/lib/makefile;
+ln -s ${makefile_dir}/libs.mk ${optree_dir}/lib/makefile;
+
+rm -f ${optree_dir}/cfg/build_env.mk;
+ln -s ${makefile_dir}/build_env.mk ${optree_dir}/cfg/build_env.mk;
+
+env_file=${optree_dir}/cfg/.env.mk
+cat << EOF > $env_file
+# AUTOMATICALLY GENERATED - DO NOT EDIT
+
+export XMDISK:=${XMDISK:?XMDISK not defined}
+export XMAREA:=${XMAREA:?XMAREA not defined}
+export XM_PATH:=${XM_PATH:?XM_PATH not defined}
+
+export XM_MORE:=${XM_MORE}
+export XMTMP_DIR:=${XMTMP_DIR}
+export XMTEMPPATH:=${XMTEMPPATH}
+export XMHISTORY_DIR:=${XMHISTORY_DIR}
+
+export XM_AWK:=${XM_AWK:?XM_AWK not defined}
+export XM_YACC:=${XM_YACC:?XM_YACC not defined}
+export XM_MAKE:=${XM_MAKE:?XM_MAKE not defined}
+
+export XM_PYTHON:=${XM_PYTHON:?XM_PYTHON not defined}
+export XM_PYTHONLIB:=${XM_PYTHONLIB:?XM_PYTHONLIB not defined}
+export XMPY_ROOT:=${XMPY_ROOT:?XMPY_ROOT not defined}
+
+export XM_CC_COMPILER:=${XM_CC_COMPILER:?XM_CC_COMPILER not defined}
+export XM_CC:=${XM_CC:?XM_CC not defined}
+export XM_CC_PATH:=${XM_CC_PATH:?XM_CC_PATH not defined}
+export XM_CC_OPTIONS:=${XM_CC_OPTIONS}
+
+export XM_CXX:=${XM_CXX:?XM_CXX not defined}
+export XM_CXX_PATH:=${XM_CXX_PATH:?XM_CXX_PATH not defined}
+export XM_CXX_OPTIONS:=${XM_CXX_OPTIONS}
+
+export XM_FT_COMPILER:=${XM_FT_COMPILER:?XM_FT_COMPILER not defined}
+export XM_FORTRAN:=${XM_FORTRAN:?XM_FORTRAN not defined}
+export XM_FORTRAN_PATH:=${XM_FORTRAN_PATH:?XM_FORTRAN_PATH not defined}
+export XM_FORTRAN_OPTIONS:=${XM_FORTRAN_OPTIONS}
+
+EOF
+
+env | grep -E '^XM(AREA|SRC)_' >> $env_file
